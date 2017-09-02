@@ -1,0 +1,8 @@
+## Author: Ludius of Caelestrasz-US
+## Interface: 70300
+## Notes: Mythic Keystone Status keeps track of the mythic plus dungeons that you have successfully completed on all your characters.
+## Title: Mythic Keystone Status
+## Version: 1.0
+## SavedVariables: MythicKeystoneStatusDB
+embeds.xml
+MythicKeystoneStatus.lua
