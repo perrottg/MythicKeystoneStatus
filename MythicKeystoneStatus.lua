@@ -12,6 +12,7 @@ textures.horde = "|TInterface\\FriendsFrame\\PlusManz-Horde:18|t"
 
 local yellow = { r = 1.0, g = 1.0, b = 0.2 }
 local gray = { r = 0.5, g = 0.5, b = 0.5 }
+local green = { r = 0.2, g = 1.0, b = 0.2 }
 
 local MythicKeystoneStatusLauncher = LDB:NewDataObject("MythicKeystoneStatus", {
 		type = "data source",
@@ -115,10 +116,10 @@ function GetKeystoneStatus()
 		status.recentBestTime, status.recentBestLevel = C_ChallengeMode.GetRecentBestForMap(dungeons[i].id);
 
 		if (status.weeklyBestLevel) and ( (not keystoneStatus.weeklyBestLevel) or (status.weeklyBestLevel > keystoneStatus.weeklyBestLevel) ) then 
-			keystoneStatus.weeklyBestLevel = status.weeklyBestLevel
+			keystoneStatus.weeklyBest = {level = status.weeklyBestLevel, time = status.weeklyBestTime, dungeon = dungeons[i].name}
 		end
 		if (status.recentBestLevel) and  ( (not keystoneStatus.recentBestLevel) or (status.recentBestLevel > keystoneStatus.recentBestLevel) ) then
-			keystoneStatus.recentBestLevel = status.recentBestLevel
+			keystoneStatus.recentBest = {level = status.recentBestLevel, time = status.recentBestTime, dungeon = dungeons[i].name}
 		end
 		
 		keystoneStatus[dungeons[i].name] = status	
@@ -170,24 +171,35 @@ function MythicKeystoneStatus:ShowSubTooltip(cell, info)
 
 	for i = 1, #dungeons do
 		local line = subTooltip:AddLine()
+		local keystoneStatus = character.keystoneStatus[dungeons[i].name]
 		
-		subTooltip:SetCell(line, 1, "|T"..dungeons[i].texture..":0|t " .. dungeons[i].name, nil, "LEFT")
+		subTooltip:SetCell(line, 1, "|T"..dungeons[i].texture..":0|t " .. dungeons[i].name, nil, "LEFT", nil, nil, nil, 10)
 
 		if (type == "WEEKLY") then
-			if (character.keystoneStatus[dungeons[i].name].weeklyBestTime) then
-				subTooltip:SetCell(line, 2, GetTimeStringFromSeconds(character.keystoneStatus[dungeons[i].name].weeklyBestTime / 1000), nil, "LEFT")
+			local level = keystoneStatus.weeklyBestLevel
+
+			if (keystoneStatus.weeklyBestTime) then
+				subTooltip:SetCell(line, 2, GetTimeStringFromSeconds(keystoneStatus.weeklyBestTime / 1000), nil, "LEFT")
 			else
 				subTooltip:SetLineTextColor(line, gray.r, gray.g, gray.b)
 			end
-			subTooltip:SetCell(line, 3, character.keystoneStatus[dungeons[i].name].weeklyBestLevel, nil, "RIGHT")				
+
+			if (level) then level = "+"..level end
+			subTooltip:SetCell(line, 3, level, nil, "RIGHT")				
 		else 
-			if (character.keystoneStatus[dungeons[i].name].recentBestTime) then
-				subTooltip:SetCell(line, 2, GetTimeStringFromSeconds(character.keystoneStatus[dungeons[i].name].recentBestTime / 1000), nil, "LEFT")
+
+			local level = keystoneStatus.recentBestLevel
+
+			if (keystoneStatus.recentBestTime) then
+				subTooltip:SetCell(line, 2, GetTimeStringFromSeconds(keystoneStatus.recentBestTime / 1000), nil, "LEFT")
 			else
 				subTooltip:SetLineTextColor(line, gray.r, gray.g, gray.b)
 			end
-			subTooltip:SetCell(line, 3, character.keystoneStatus[dungeons[i].name].recentBestLevel, nil, "RIGHT")	
+			if (level ) then level = "+"..level end
+			subTooltip:SetCell(line, 3, level, nil, "RIGHT")	
 		end
+
+		subTooltip:SetCellTextColor(line, 3, green.r, green.g, green.b)
 	end
 
 	subTooltip:Show()
@@ -209,8 +221,7 @@ local function ShowCharacter(characterInfo)
 	local line = tooltip:AddLine()
 	local factionIcon = ""
 	local dungeons = GetKeystoneDungeonList()
-	local weeklyBestLevel = nil
-	local recentBestLevel = nil
+	local keystoneStatus = characterInfo.keystoneStatus
 
 	if characterInfo.faction and characterInfo.faction == "Alliance" then
 		factionIcon = textures.alliance
@@ -225,27 +236,34 @@ local function ShowCharacter(characterInfo)
 		tooltip:SetCellTextColor(line, 1, color.r, color.g, color.b)
 	end	
 
-	if (characterInfo.lastUpdate > lastReset) then
-		weeklyBestLevel = characterInfo.keystoneStatus.weeklyBestLevel
-		recentBestLevel = characterInfo.keystoneStatus.recentBestLevel
+	if (characterInfo.lastUpdate > lastReset) then 
+		if (keystoneStatus.weeklyBest) then
+			tooltip:SetCell(line, 2, keystoneStatus.weeklyBest.dungeon, nil, "RIGHT", nil, nil, 10)
+			tooltip:SetCell(line, 3, "+" .. keystoneStatus.weeklyBest.level, nil, "RIGHT")
+		end
 	end
-	
-	tooltip:SetCell(line, 2, weeklyBestLevel, nil, "RIGHT")
-	tooltip:SetCell(line, 3, recentBestLevel, nil, "RIGHT")
 
-	tooltip:SetCellScript(line, 2, "OnEnter", function(self)
+	if (keystoneStatus.recentBest) then
+		tooltip:SetCell(line, 4, keystoneStatus.recentBest.dungeon, nil, "RIGHT", nil, nil, 10)
+		tooltip:SetCell(line, 5, "+" .. keystoneStatus.recentBest.level, nil, "RIGHT")
+	end
+
+	tooltip:SetCellTextColor(line, 3, green.r, green.g, green.b)
+	tooltip:SetCellTextColor(line, 5, green.r, green.g, green.b)
+
+	tooltip:SetCellScript(line, 3, "OnEnter", function(self)
 			local info = { character = characterInfo, type = "WEEKLY" }
 			MythicKeystoneStatus:ShowSubTooltip(self, info)
 		end)
 
-	tooltip:SetCellScript(line, 2, "OnLeave", HideSubTooltip)
+	tooltip:SetCellScript(line, 3, "OnLeave", HideSubTooltip)
 
-	tooltip:SetCellScript(line, 3, "OnEnter", function(self)
+	tooltip:SetCellScript(line, 5, "OnEnter", function(self)
 			local info = { character = characterInfo, type= "ALLTIME" }
 			MythicKeystoneStatus:ShowSubTooltip(self, info)
 		end)
 
-	tooltip:SetCellScript(line, 3, "OnLeave", HideSubTooltip)
+	tooltip:SetCellScript(line, 5, "OnLeave", HideSubTooltip)
 end
 
 function MythicKeystoneStatus:ShowToolTip()
@@ -259,7 +277,7 @@ function MythicKeystoneStatus:ShowToolTip()
 	if LibQTip:IsAcquired("MythicKeystoneStatusTooltip") and tooltip then
 		tooltip:Clear()
 	else
-		tooltip = LibQTip:Acquire("MythicKeystoneStatusTooltip", 3, "LEFT", "RIGHT", "RIGHT")
+		tooltip = LibQTip:Acquire("MythicKeystoneStatusTooltip", 5, "LEFT", "RIGHT", "RIGHT", "RIGHT", "RIGHT")
 		MythicKeystoneStatus.tooltip = tooltip 
 	end
 
@@ -267,13 +285,29 @@ function MythicKeystoneStatus:ShowToolTip()
 	tooltip:SetCell(1, 1, "|TInterface\\TARGETINGFRAME\\UI-RaidTargetingIcon_1:16|t ".."Mythic Keystone Status", nil, "LEFT", tooltip:GetColumnCount())
 	tooltip:AddSeparator(6,0,0,0,0)
 
-	line = tooltip:AddLine("Character", "Weekly", "All-Time")
-	tooltip:SetLineTextColor(line, yellow.r, yellow.g, yellow.b)
+	--line = tooltip:AddLine("Character", "Weekly", "All-Time")
+	--tooltip:SetLineTextColor(line, yellow.r, yellow.g, yellow.b)
+	line = tooltip:AddLine()
+	tooltip:SetCell(line, 1, "Character")
+	tooltip:SetCell(line, 2, "Weekly Best", nil, "RIGHT", 2)
+	tooltip:SetCell(line, 4, "Recent Best", nil, "RIGHT", 2)
+	tooltip:SetCellTextColor(line, 1, yellow.r, yellow.g, yellow.b)
+	tooltip:SetCellTextColor(line, 2, yellow.r, yellow.g, yellow.b)
+	tooltip:SetCellTextColor(line, 4, yellow.r, yellow.g, yellow.b)
+
+
+	--tooltip:SetLineTextColor(line, yellow.r, yellow.g, yellow.b)
+
 	tooltip:AddSeparator(3,0,0,0,0)
 
 	for i=1, #characters do		
 		ShowCharacter(characters[i])		
 	end
+
+	tooltip:AddSeparator(6,0,0,0,0)
+	line = tooltip:AddLine()
+	tooltip:SetCell(line, 1, "TIP: Hover over level number for more details", nil, "LEFT", 4)
+
 
 	if (frame) then
 		tooltip:SetAutoHideDelay(0.01, frame)
