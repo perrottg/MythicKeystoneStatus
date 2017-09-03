@@ -1,10 +1,11 @@
-MythicKeystoneStatus = LibStub("AceAddon-3.0"):NewAddon("MythicKeystoneStatus", "AceConsole-3.0", "AceEvent-3.0" );
+MythicKeystoneStatus = LibStub("AceAddon-3.0"):NewAddon("MythicKeystoneStatus", "AceConsole-3.0", "AceEvent-3.0", "AceTimer-3.0" );
 
 local LDB = LibStub("LibDataBroker-1.1", true)
 local LDBIcon = LDB and LibStub("LibDBIcon-1.0", true)
 local LibQTip = LibStub('LibQTip-1.0')
 local frame = nil
 local keystoneStoneDungeons = nil
+local updateDelay = 3
 
 local textures = {}
 textures.alliance = "|TInterface\\FriendsFrame\\PlusManz-Alliance:18|t"
@@ -44,32 +45,6 @@ local function GetKeystoneDungeonList()
 	return dungeons
 end
 
-function MythicKeystoneStatus:OnInitialize()
-	self.db = LibStub("AceDB-3.0"):New("MythicKeystoneStatusDB", defaults, true)
-	LDBIcon:Register("MythicKeystoneStatus", MythicKeystoneStatusLauncher, self.db.global.MinimapButton)	
-end
-
-function MythicKeystoneStatus:OnEnable()
-	C_ChallengeMode.RequestMapInfo();
-	local dungeons = GetKeystoneDungeonList()
-end
-
-function MythicKeystoneStatus:OnDisable()
-
-end
-
-local function GetWeeklyQuestResetTime()
-   local now = time()
-   local region = GetCurrentRegion()
-   local dayOffset = { 2, 1, 0, 6, 5, 4, 3 }
-   local regionDayOffset = {{ 2, 1, 0, 6, 5, 4, 3 }, { 4, 3, 2, 1, 0, 6, 5 }, { 3, 2, 1, 0, 6, 5, 4 }, { 4, 3, 2, 1, 0, 6, 5 }, { 4, 3, 2, 1, 0, 6, 5 } }
-   local nextDailyReset = GetQuestResetTime()
-   local utc = date("!*t", now + nextDailyReset)      
-   local reset = regionDayOffset[region][utc.wday] * 86400 + nextDailyReset
-   
-   return time() + reset  
-end
-
 local function GetCharacterInfo()
 	local characterInfo = {}
 	local _, class = UnitClass("player")
@@ -85,15 +60,69 @@ local function GetCharacterInfo()
 	return characterInfo
 end
 
+
+local function UpdateCharacter()
+	--MythicKeystoneStatus:Print("Updating character...")
+
+	if (UnitLevel("player") < 110) then return end
+
+	local characters = MythicKeystoneStatus.db.global.characters or {}
+	local currentCharacter = GetCharacterInfo()
+
+	characters[currentCharacter.name .. "-" .. currentCharacter.realm] = currentCharacter
+	MythicKeystoneStatus.db.global.characters = characters
+end
+
+
+function MythicKeystoneStatus:OnInitialize()
+	self.db = LibStub("AceDB-3.0"):New("MythicKeystoneStatusDB", defaults, true)
+	LDBIcon:Register("MythicKeystoneStatus", MythicKeystoneStatusLauncher, self.db.global.MinimapButton)	
+end
+
+function MythicKeystoneStatus:OnEnable()
+	C_ChallengeMode.RequestMapInfo();
+	local dungeons = GetKeystoneDungeonList()
+
+	-- BAG_NEW_ITEMS_UPDATED
+
+	--CHALLENGE_MODE_NEW_RECORD
+
+	--self:RegisterEvent("BAG_UPDATE")
+	self:RegisterEvent("CHALLENGE_MODE_COMPLETED")
+	MythicKeystoneStatus:ScheduleTimer(UpdateCharacter, updateDelay)
+end
+
+function MythicKeystoneStatus:OnDisable()
+	--self:UnregisterEvent("BAG_UPDATE")
+	self:UnregisterEvent("CHALLENGE_MODE_COMPLETED")
+end
+
+function MythicKeystoneStatus:CHALLENGE_MODE_COMPLETED(event)
+	--MythicKeystoneStatus:Print("CHALLENGE_MODE_COMPLETED event received!")
+	MythicKeystoneStatus:ScheduleTimer(UpdateCharacter, updateDelay)
+end
+
+function MythicKeystoneStatus:BAG_UPDATE(event, bag)
+	MythicKeystoneStatus:Print("BAG_UPDATE event received!")
+	MythicKeystoneStatus:ScheduleTimer(UpdateBag, updateDelay)
+end
+
+local function GetWeeklyQuestResetTime()
+   local now = time()
+   local region = GetCurrentRegion()
+   local dayOffset = { 2, 1, 0, 6, 5, 4, 3 }
+   local regionDayOffset = {{ 2, 1, 0, 6, 5, 4, 3 }, { 4, 3, 2, 1, 0, 6, 5 }, { 3, 2, 1, 0, 6, 5, 4 }, { 4, 3, 2, 1, 0, 6, 5 }, { 4, 3, 2, 1, 0, 6, 5 } }
+   local nextDailyReset = GetQuestResetTime()
+   local utc = date("!*t", now + nextDailyReset)      
+   local reset = regionDayOffset[region][utc.wday] * 86400 + nextDailyReset
+   
+   return time() + reset  
+end
+
+
 local function GetCharacters(realm)
 	local sortedCharacters = {}
 	local characters = MythicKeystoneStatus.db.global.characters or {}
-
-	if (UnitLevel("player") == 110) then	
-		local currentCharacter = GetCharacterInfo()
-		characters[currentCharacter.name .. "-" .. currentCharacter.realm] = currentCharacter
-		MythicKeystoneStatus.db.global.characters = characters
-	end
 
 	for key,value in pairs(characters) do
 		if (not realm) or (realm == characters[i].realm) then
@@ -106,6 +135,32 @@ local function GetCharacters(realm)
 	return sortedCharacters
 end
 
+local function GetActiveKeystone()
+	local keystoneInfo = nil
+	
+	for bag = 0, NUM_BAG_SLOTS do
+		local slots = GetContainerNumSlots(bag);
+		for slot = 1, slots do
+			if (GetContainerItemID(bag, slot) == 138019) then
+				local keystoneLink = GetContainerItemLink(bag, slot);
+				local parts = { strsplit(':', keystoneLink) }
+				local keystoneLevel	= tonumber(parts[3]);
+				local keystoneDungeon = C_ChallengeMode.GetMapInfo(tonumber(parts[2]));
+				
+				keystoneInfo = { dungeon = keystoneDungeon, level = keystoneLevel, link = keystoneLink }
+			end
+		end
+	end
+
+	return keystoneInfo;
+end
+
+
+local function UpdateBag()
+	MythicKeystoneStatus:Print("Updating bag...")
+end
+
+
 function GetKeystoneStatus()
 	local keystoneStatus = {}
 	local dungeons = GetKeystoneDungeonList()
@@ -115,17 +170,24 @@ function GetKeystoneStatus()
 		_, status.weeklyBestTime, status.weeklyBestLevel, affixes = C_ChallengeMode.GetMapPlayerStats(dungeons[i].id);
 		status.recentBestTime, status.recentBestLevel = C_ChallengeMode.GetRecentBestForMap(dungeons[i].id);
 
-		if (status.weeklyBestLevel) and ( (not keystoneStatus.weeklyBestLevel) or (status.weeklyBestLevel > keystoneStatus.weeklyBestLevel) ) then 
-			keystoneStatus.weeklyBest = {level = status.weeklyBestLevel, time = status.weeklyBestTime, dungeon = dungeons[i].name}
+		if (status.weeklyBestLevel) then
+			if (not keystoneStatus.weeklyBest) or (keystoneStatus.weeklyBest.level < status.weeklyBestLevel) or 
+				( (keystoneStatus.weeklyBest.level == status.weeklyBestlevel) and (keystoneStatus.weeklyBest.time > status.weeklyBestTime) ) then
+				keystoneStatus.weeklyBest = {level = status.weeklyBestLevel, time = status.weeklyBestTime, dungeon = dungeons[i].name}
+			end
 		end
-		if (status.recentBestLevel) and  ( (not keystoneStatus.recentBestLevel) or (status.recentBestLevel > keystoneStatus.recentBestLevel) ) then
-			keystoneStatus.recentBest = {level = status.recentBestLevel, time = status.recentBestTime, dungeon = dungeons[i].name}
+
+		if (status.recentBestLevel) then
+			if (not keystoneStatus.recentBest) or (keystoneStatus.recentBest.level < status.recentBestLevel) or 
+				( (keystoneStatus.recentBest.level == status.recentBestLevel) and (keystoneStatus.recentBest.time > status.recentBestTime) ) then
+				keystoneStatus.recentBest = {level = status.recentBestLevel, time = status.recentBestTime, dungeon = dungeons[i].name}
+			end
 		end
 		
 		keystoneStatus[dungeons[i].name] = status	
 	end
 
-	keystoneStatus.expires = GetWeeklyQuestResetTime()
+	keystoneStatus.activeKeystone = GetActiveKeystone()
 
 	return keystoneStatus
 end
@@ -157,7 +219,7 @@ function MythicKeystoneStatus:ShowSubTooltip(cell, info)
 	if (type == "WEEKLY") then
 		title = "Weekly Best"
 	else
-		title = "All-Time Best"
+		title = "Recent Best"
 	end
 
 	line = subTooltip:AddLine()	
@@ -205,7 +267,7 @@ function MythicKeystoneStatus:ShowSubTooltip(cell, info)
 	subTooltip:Show()
 end
 
-local function HideSubTooltip()
+function HideSubTooltip()
 	local subTooltip = MythicKeystoneStatus.subTooltip
 	if subTooltip then
 		LibQTip:Release(subTooltip)
@@ -248,8 +310,15 @@ local function ShowCharacter(characterInfo)
 		tooltip:SetCell(line, 5, "+" .. keystoneStatus.recentBest.level, nil, "RIGHT")
 	end
 
+	if (keystoneStatus.activeKeystone) then
+		tooltip:SetCell(line, 6, keystoneStatus.activeKeystone.dungeon, nil, "RIGHT", nil, nil, 10)
+		tooltip:SetCell(line, 7, "+" .. keystoneStatus.activeKeystone.level, nil, "RIGHT")
+	end
+
 	tooltip:SetCellTextColor(line, 3, green.r, green.g, green.b)
 	tooltip:SetCellTextColor(line, 5, green.r, green.g, green.b)
+	tooltip:SetCellTextColor(line, 7, green.r, green.g, green.b)
+
 
 	tooltip:SetCellScript(line, 3, "OnEnter", function(self)
 			local info = { character = characterInfo, type = "WEEKLY" }
@@ -277,7 +346,7 @@ function MythicKeystoneStatus:ShowToolTip()
 	if LibQTip:IsAcquired("MythicKeystoneStatusTooltip") and tooltip then
 		tooltip:Clear()
 	else
-		tooltip = LibQTip:Acquire("MythicKeystoneStatusTooltip", 5, "LEFT", "RIGHT", "RIGHT", "RIGHT", "RIGHT")
+		tooltip = LibQTip:Acquire("MythicKeystoneStatusTooltip", 7, "LEFT", "RIGHT", "RIGHT", "RIGHT", "RIGHT")
 		MythicKeystoneStatus.tooltip = tooltip 
 	end
 
@@ -291,9 +360,11 @@ function MythicKeystoneStatus:ShowToolTip()
 	tooltip:SetCell(line, 1, "Character")
 	tooltip:SetCell(line, 2, "Weekly Best", nil, "RIGHT", 2)
 	tooltip:SetCell(line, 4, "Recent Best", nil, "RIGHT", 2)
+	tooltip:SetCell(line, 6, "Active Keystone", nil, "RIGHT", 2)
 	tooltip:SetCellTextColor(line, 1, yellow.r, yellow.g, yellow.b)
 	tooltip:SetCellTextColor(line, 2, yellow.r, yellow.g, yellow.b)
 	tooltip:SetCellTextColor(line, 4, yellow.r, yellow.g, yellow.b)
+	tooltip:SetCellTextColor(line, 6, yellow.r, yellow.g, yellow.b)
 
 
 	--tooltip:SetLineTextColor(line, yellow.r, yellow.g, yellow.b)
@@ -306,7 +377,7 @@ function MythicKeystoneStatus:ShowToolTip()
 
 	tooltip:AddSeparator(6,0,0,0,0)
 	line = tooltip:AddLine()
-	tooltip:SetCell(line, 1, "TIP: Hover over level number for more details", nil, "LEFT", 4)
+	tooltip:SetCell(line, 1, "TIP: Hover over level number for more details", nil, "LEFT", 7)
 
 
 	if (frame) then
