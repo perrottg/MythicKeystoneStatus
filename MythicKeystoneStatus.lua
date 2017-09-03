@@ -21,7 +21,9 @@ local MythicKeystoneStatusLauncher = LDB:NewDataObject("MythicKeystoneStatus", {
 		label = "MythicKeystoneStatus",
 		tocname = "MythicKeystoneStatus",
 		icon = "Interface\\TARGETINGFRAME\\UI-RaidTargetingIcon_1.png",
-		OnClick = nil,
+		OnClick = function(clickedframe, button)
+			MythicKeystoneStatus:ShowOptions()
+		end,
 		OnEnter = function(self)
 			frame = self
 			MythicKeystoneStatus:ShowToolTip()
@@ -77,6 +79,7 @@ end
 function MythicKeystoneStatus:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("MythicKeystoneStatusDB", defaults, true)
 	LDBIcon:Register("MythicKeystoneStatus", MythicKeystoneStatusLauncher, self.db.global.MinimapButton)	
+	MythicKeystoneStatus:InitializeOptions()
 end
 
 function MythicKeystoneStatus:OnEnable()
@@ -277,6 +280,28 @@ function HideSubTooltip()
 	MythicKeystoneStatus.subTooltip = subTooltip
 end
 
+local function GetDungeonNameOffset()
+	local offset = 0
+	local options = MythicKeystoneStatus:GetOptions()
+
+	if (options.showDungeonNames) then 
+		offset = 1
+	end
+
+	return offset
+end
+
+local function GetRecentBestOffset()
+	local offset = 0
+	local options = MythicKeystoneStatus:GetOptions()
+
+	if (options.showRecentBest) then
+		offset = 1 + GetDungeonNameOffset()
+	end
+
+	return offset
+end
+
 local function ShowCharacter(characterInfo)
 	local lastReset = WorldBossStatus:GetWeeklyQuestResetTime() - 604800
 	local tooltip = MythicKeystoneStatus.tooltip
@@ -284,6 +309,15 @@ local function ShowCharacter(characterInfo)
 	local factionIcon = ""
 	local dungeons = GetKeystoneDungeonList()
 	local keystoneStatus = characterInfo.keystoneStatus
+	local characterName = characterInfo.name
+	local dungeonNameOffset = GetDungeonNameOffset()
+	local recentBestOffset = GetRecentBestOffset()
+	local options = MythicKeystoneStatus:GetOptions()
+
+
+	if (options.expandCharacterNames) then
+		characterName = characterInfo.name .. "-" .. characterInfo.realm
+	end
 
 	if characterInfo.faction and characterInfo.faction == "Alliance" then
 		factionIcon = textures.alliance
@@ -291,7 +325,7 @@ local function ShowCharacter(characterInfo)
 		factionIcon = textures.horde
 	end
 
-	tooltip:SetCell(line, 1, factionIcon.." "..characterInfo.name)
+	tooltip:SetCell(line, 1, factionIcon.." "..characterName)
 
 	if characterInfo.class then
 		local color = RAID_CLASS_COLORS[characterInfo.class]
@@ -300,39 +334,43 @@ local function ShowCharacter(characterInfo)
 
 	if (characterInfo.lastUpdate > lastReset) then 
 		if (keystoneStatus.weeklyBest) then
-			tooltip:SetCell(line, 2, keystoneStatus.weeklyBest.dungeon, nil, "RIGHT", nil, nil, 10)
-			tooltip:SetCell(line, 3, "+" .. keystoneStatus.weeklyBest.level, nil, "RIGHT")
+			if (options.showDungeonNames) then
+				tooltip:SetCell(line, 2, keystoneStatus.weeklyBest.dungeon, nil, "RIGHT", nil, nil, 10)
+			end
+			tooltip:SetCell(line, 2 + dungeonNameOffset, "+" .. keystoneStatus.weeklyBest.level, nil, "RIGHT")
 		end
 	end
+	tooltip:SetCellTextColor(line, 2 + dungeonNameOffset, green.r, green.g, green.b)
 
-	if (keystoneStatus.recentBest) then
-		tooltip:SetCell(line, 4, keystoneStatus.recentBest.dungeon, nil, "RIGHT", nil, nil, 10)
-		tooltip:SetCell(line, 5, "+" .. keystoneStatus.recentBest.level, nil, "RIGHT")
-	end
-
-	if (keystoneStatus.activeKeystone) then
-		tooltip:SetCell(line, 6, keystoneStatus.activeKeystone.dungeon, nil, "RIGHT", nil, nil, 10)
-		tooltip:SetCell(line, 7, "+" .. keystoneStatus.activeKeystone.level, nil, "RIGHT")
-	end
-
-	tooltip:SetCellTextColor(line, 3, green.r, green.g, green.b)
-	tooltip:SetCellTextColor(line, 5, green.r, green.g, green.b)
-	tooltip:SetCellTextColor(line, 7, green.r, green.g, green.b)
-
-
-	tooltip:SetCellScript(line, 3, "OnEnter", function(self)
+	tooltip:SetCellScript(line, 2 + dungeonNameOffset, "OnEnter", function(self)
 			local info = { character = characterInfo, type = "WEEKLY" }
 			MythicKeystoneStatus:ShowSubTooltip(self, info)
 		end)
 
-	tooltip:SetCellScript(line, 3, "OnLeave", HideSubTooltip)
+	tooltip:SetCellScript(line, 2 + dungeonNameOffset, "OnLeave", HideSubTooltip)
 
-	tooltip:SetCellScript(line, 5, "OnEnter", function(self)
-			local info = { character = characterInfo, type= "ALLTIME" }
-			MythicKeystoneStatus:ShowSubTooltip(self, info)
-		end)
+	if (options.showRecentBest) then
+		if (keystoneStatus.recentBest) then
+			if (options.showDungeonNames) then 
+				tooltip:SetCell(line, 4, keystoneStatus.recentBest.dungeon, nil, "RIGHT", nil, nil, 10)
+			end
+			tooltip:SetCell(line, 3 + (2 * dungeonNameOffset), "+" .. keystoneStatus.recentBest.level, nil, "RIGHT")
+		end		
+		tooltip:SetCellTextColor(line, 3 + (2 * dungeonNameOffset), green.r, green.g, green.b)
 
-	tooltip:SetCellScript(line, 5, "OnLeave", HideSubTooltip)
+		tooltip:SetCellScript(line, 3 + (2 * dungeonNameOffset), "OnEnter", function(self)
+				local info = { character = characterInfo, type= "ALLTIME" }
+				MythicKeystoneStatus:ShowSubTooltip(self, info)
+			end)
+
+		tooltip:SetCellScript(line, 3 + (2 * dungeonNameOffset), "OnLeave", HideSubTooltip)
+	end
+
+	if (keystoneStatus.activeKeystone) then
+		tooltip:SetCell(line, 3 + recentBestOffset + dungeonNameOffset, keystoneStatus.activeKeystone.dungeon, nil, "RIGHT", nil, nil, 10)
+		tooltip:SetCell(line, 4 + recentBestOffset + dungeonNameOffset, "+" .. keystoneStatus.activeKeystone.level, nil, "RIGHT")
+	end
+	tooltip:SetCellTextColor(line, 4 + recentBestOffset + dungeonNameOffset, green.r, green.g, green.b)
 end
 
 function MythicKeystoneStatus:ShowToolTip()
@@ -342,11 +380,28 @@ function MythicKeystoneStatus:ShowToolTip()
 	local character = GetCharacterInfo()
 	local dungeons = GetKeystoneDungeonList()
 	local characters = GetCharacters()
+	local columnCount = 5
+	local dungeonNameOffset = GetDungeonNameOffset()
+	local recentBestOffset = GetRecentBestOffset()
+	local weeklyBestTitle = "Weekly"
+	local recentBestTitle = "Recent"
+	local options = MythicKeystoneStatus:GetOptions()
+
+	if (options.showDungeonNames) then
+		weeklyBestTitle = "Weekly Best"
+		recentBestTitle = "Recent Best"
+	end
+
+	columnCount = 4 + dungeonNameOffset + recentBestOffset
+
+	--if (showRecentBest) then
+	--	columnCount = columnCount + 2 + (2 * dungeonNameOffset)
+	--end
 	
 	if LibQTip:IsAcquired("MythicKeystoneStatusTooltip") and tooltip then
 		tooltip:Clear()
 	else
-		tooltip = LibQTip:Acquire("MythicKeystoneStatusTooltip", 7, "LEFT", "RIGHT", "RIGHT", "RIGHT", "RIGHT")
+		tooltip = LibQTip:Acquire("MythicKeystoneStatusTooltip", columnCount, "LEFT", "RIGHT", "RIGHT", "RIGHT", "RIGHT")
 		MythicKeystoneStatus.tooltip = tooltip 
 	end
 
@@ -354,20 +409,21 @@ function MythicKeystoneStatus:ShowToolTip()
 	tooltip:SetCell(1, 1, "|TInterface\\TARGETINGFRAME\\UI-RaidTargetingIcon_1:16|t ".."Mythic Keystone Status", nil, "LEFT", tooltip:GetColumnCount())
 	tooltip:AddSeparator(6,0,0,0,0)
 
-	--line = tooltip:AddLine("Character", "Weekly", "All-Time")
-	--tooltip:SetLineTextColor(line, yellow.r, yellow.g, yellow.b)
 	line = tooltip:AddLine()
 	tooltip:SetCell(line, 1, "Character")
-	tooltip:SetCell(line, 2, "Weekly Best", nil, "RIGHT", 2)
-	tooltip:SetCell(line, 4, "Recent Best", nil, "RIGHT", 2)
-	tooltip:SetCell(line, 6, "Active Keystone", nil, "RIGHT", 2)
 	tooltip:SetCellTextColor(line, 1, yellow.r, yellow.g, yellow.b)
+
+	tooltip:SetCell(line, 2, weeklyBestTitle, nil, "RIGHT", 1 + dungeonNameOffset)
 	tooltip:SetCellTextColor(line, 2, yellow.r, yellow.g, yellow.b)
-	tooltip:SetCellTextColor(line, 4, yellow.r, yellow.g, yellow.b)
-	tooltip:SetCellTextColor(line, 6, yellow.r, yellow.g, yellow.b)
 
+	if (options.showRecentBest) then
+		tooltip:SetCell(line, 3 + dungeonNameOffset, recentBestTitle, nil, "RIGHT", 1 + dungeonNameOffset)
+		tooltip:SetCellTextColor(line, 3 + dungeonNameOffset, yellow.r, yellow.g, yellow.b)
+		column = 6
+	end
 
-	--tooltip:SetLineTextColor(line, yellow.r, yellow.g, yellow.b)
+	tooltip:SetCell(line, 3 + recentBestOffset + dungeonNameOffset, "Active Keystone", nil, "RIGHT", 2)
+	tooltip:SetCellTextColor(line, 3 + recentBestOffset + dungeonNameOffset, yellow.r, yellow.g, yellow.b)
 
 	tooltip:AddSeparator(3,0,0,0,0)
 
@@ -375,9 +431,11 @@ function MythicKeystoneStatus:ShowToolTip()
 		ShowCharacter(characters[i])		
 	end
 
-	tooltip:AddSeparator(6,0,0,0,0)
-	line = tooltip:AddLine()
-	tooltip:SetCell(line, 1, "TIP: Hover over level number for more details", nil, "LEFT", 7)
+	if (options.showTips) then
+		tooltip:AddSeparator(6,0,0,0,0)
+		line = tooltip:AddLine()
+		tooltip:SetCell(line, 1, "TIP: Hover over level number for more details", nil, "LEFT", columnCount)
+	end
 
 
 	if (frame) then
