@@ -2,8 +2,12 @@
 ## Interface: 70300
 ## Notes: Mythic Keystone Status keeps track of the mythic plus dungeons that you have successfully completed on all your characters.
 ## Title: Mythic Keystone Status
-## Version: 1.3
+## Version: 1.4
 ## SavedVariables: MythicKeystoneStatusDB
+
 embeds.xml
+
+enUS.lua
+
 MythicKeystoneStatus.lua
 options.lua

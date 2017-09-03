@@ -1,3 +1,4 @@
+local L = LibStub("AceLocale-3.0"):GetLocale("MythicKeystoneStatus")
 MythicKeystoneStatus = LibStub("AceAddon-3.0"):NewAddon("MythicKeystoneStatus", "AceConsole-3.0", "AceEvent-3.0", "AceTimer-3.0" );
 
 local LDB = LibStub("LibDataBroker-1.1", true)
@@ -17,7 +18,7 @@ local green = { r = 0.2, g = 1.0, b = 0.2 }
 
 local MythicKeystoneStatusLauncher = LDB:NewDataObject("MythicKeystoneStatus", {
 		type = "data source",
-		text = "Mythic Plus Status",
+		text = L["Mythic Keystone Status"],
 		label = "MythicKeystoneStatus",
 		tocname = "MythicKeystoneStatus",
 		icon = "Interface\\TARGETINGFRAME\\UI-RaidTargetingIcon_1.png",
@@ -220,9 +221,9 @@ function MythicKeystoneStatus:ShowSubTooltip(cell, info)
 	subTooltip:SetPoint("RIGHT", MythicKeystoneStatus.tooltip, "LEFT", -20, 0)
 
 	if (type == "WEEKLY") then
-		title = "Weekly Best"
+		title = L["Weekly Best"]
 	else
-		title = "Recent Best"
+		title = L["Recent Best"]
 	end
 
 	line = subTooltip:AddLine()	
@@ -230,7 +231,7 @@ function MythicKeystoneStatus:ShowSubTooltip(cell, info)
 	subTooltip:SetCellTextColor(line, 1, yellow.r, yellow.g, yellow.b)
 	subTooltip:AddSeparator(6,0,0,0,0)
 
-	line = subTooltip:AddLine("Dungeon", "Time", "Level")
+	line = subTooltip:AddLine(L["Dungeon"], L["Time"], L["Level"])
 	subTooltip:SetLineTextColor(line, yellow.r, yellow.g, yellow.b)
 	subTooltip:AddSeparator(3,0,0,0,0)
 
@@ -359,7 +360,7 @@ local function ShowCharacter(characterInfo)
 		tooltip:SetCellTextColor(line, 3 + (2 * dungeonNameOffset), green.r, green.g, green.b)
 
 		tooltip:SetCellScript(line, 3 + (2 * dungeonNameOffset), "OnEnter", function(self)
-				local info = { character = characterInfo, type= "ALLTIME" }
+				local info = { character = characterInfo, type= "RECENT" }
 				MythicKeystoneStatus:ShowSubTooltip(self, info)
 			end)
 
@@ -383,13 +384,13 @@ function MythicKeystoneStatus:ShowToolTip()
 	local columnCount = 5
 	local dungeonNameOffset = GetDungeonNameOffset()
 	local recentBestOffset = GetRecentBestOffset()
-	local weeklyBestTitle = "Weekly"
-	local recentBestTitle = "Recent"
+	local weeklyBestTitle = L["Weekly"]
+	local recentBestTitle = L["Recent"]
 	local options = MythicKeystoneStatus:GetOptions()
 
 	if (options.showDungeonNames) then
-		weeklyBestTitle = "Weekly Best"
-		recentBestTitle = "Recent Best"
+		weeklyBestTitle = L["Weekly Best"]
+		recentBestTitle = L["Recent Best"]
 	end
 
 	columnCount = 4 + dungeonNameOffset + recentBestOffset
@@ -406,11 +407,11 @@ function MythicKeystoneStatus:ShowToolTip()
 	end
 
 	line = tooltip:AddHeader(" ")
-	tooltip:SetCell(1, 1, "|TInterface\\TARGETINGFRAME\\UI-RaidTargetingIcon_1:16|t ".."Mythic Keystone Status", nil, "LEFT", tooltip:GetColumnCount())
+	tooltip:SetCell(1, 1, "|TInterface\\TARGETINGFRAME\\UI-RaidTargetingIcon_1:16|t "..L["Mythic Keystone Status"], nil, "LEFT", tooltip:GetColumnCount())
 	tooltip:AddSeparator(6,0,0,0,0)
 
 	line = tooltip:AddLine()
-	tooltip:SetCell(line, 1, "Character")
+	tooltip:SetCell(line, 1, L["Character"])
 	tooltip:SetCellTextColor(line, 1, yellow.r, yellow.g, yellow.b)
 
 	tooltip:SetCell(line, 2, weeklyBestTitle, nil, "RIGHT", 1 + dungeonNameOffset)
@@ -422,7 +423,7 @@ function MythicKeystoneStatus:ShowToolTip()
 		column = 6
 	end
 
-	tooltip:SetCell(line, 3 + recentBestOffset + dungeonNameOffset, "Active Keystone", nil, "RIGHT", 2)
+	tooltip:SetCell(line, 3 + recentBestOffset + dungeonNameOffset, L["Active Keystone"], nil, "RIGHT", 2)
 	tooltip:SetCellTextColor(line, 3 + recentBestOffset + dungeonNameOffset, yellow.r, yellow.g, yellow.b)
 
 	tooltip:AddSeparator(3,0,0,0,0)
@@ -434,7 +435,7 @@ function MythicKeystoneStatus:ShowToolTip()
 	if (options.showTips) then
 		tooltip:AddSeparator(6,0,0,0,0)
 		line = tooltip:AddLine()
-		tooltip:SetCell(line, 1, "TIP: Hover over level number for more details", nil, "LEFT", columnCount)
+		tooltip:SetCell(line, 1, L["TIP: Hover over level number for more details"], nil, "LEFT", columnCount)
 	end
 
 

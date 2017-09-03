@@ -1,17 +1,17 @@
-
+local L = LibStub("AceLocale-3.0"):GetLocale("MythicKeystoneStatus")
 
 local optionsTable = {
 	handler = MythicKeystoneStatus,
 	type = "group",
-	name = "General Options",
+	name = L["General Options"],
 	args = {
 		displayOptions = {
 			type = "group",
 			inline = true,
-			name = "Display Options",
+			name = L["Display Options"],
 			args = {			
 				expandCharacterNames = {
-					name = "Expand Character Names",
+					name = L["Expand Character Names"],
 					desc = "Shows the character full name including realm name",
 					type = "toggle",
 					set = function(info,val)
@@ -25,8 +25,8 @@ local optionsTable = {
 					end
 				},
 				showRecentBest = {
-					name = "Show Recent Best",
-					desc = "Shows the recent best statistic in the main tooltp",
+					name = L["Show Recent Best"],
+					desc = L["Shows the recent best statistic in the main tooltp"],
 					type = "toggle",
 					set = function(info,val)
 						local options = MythicKeystoneStatus:GetOptions()
@@ -39,8 +39,8 @@ local optionsTable = {
 					end
 				},
 				showDungeonNames = {
-					name = "Show Dungeon Names",
-					desc = "Includes dungeon name when with weekly best and recent best statistics.",
+					name = L["Show Dungeon Names"],
+					desc = L["Includes dungeon name when with weekly best and recent best statistics."],
 					type = "toggle",
 					set = function(info,val)
 						local options = MythicKeystoneStatus:GetOptions()
@@ -53,8 +53,8 @@ local optionsTable = {
 					end
 				},
 				showTips = {
-					name = "Show Tips",
-					desc = "Shows helpful messages at the bottom of the tooltip",
+					name = L["Show Tips"],
+					desc = L["Shows helpful messages at the bottom of the tooltip"],
 					type = "toggle",
 					set = function(info,val)
 						local options = MythicKeystoneStatus:GetOptions()
@@ -73,10 +73,10 @@ local optionsTable = {
 
 function MythicKeystoneStatus:InitializeOptions()
 	local mkscfg = LibStub("AceConfig-3.0")
-	mkscfg:RegisterOptionsTable("Mythic Keystone Status Options", optionsTable)
+	mkscfg:RegisterOptionsTable(L["Mythic Keystone Status Options"], optionsTable)
 
 	local mksdia = LibStub("AceConfigDialog-3.0")
-	MythicKeystoneStatus.optionsFrame =  mksdia:AddToBlizOptions("Mythic Keystone Status Options", "Mythic Keystone Status")
+	MythicKeystoneStatus.optionsFrame =  mksdia:AddToBlizOptions(L["Mythic Keystone Status Options"], L["Mythic Keystone Status"])
 end
 
 function MythicKeystoneStatus:ShowOptions()
