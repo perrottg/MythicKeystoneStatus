@@ -333,13 +333,11 @@ local function ShowCharacter(characterInfo)
 		tooltip:SetCellTextColor(line, 1, color.r, color.g, color.b)
 	end	
 
-	if (characterInfo.lastUpdate > lastReset) then 
-		if (keystoneStatus.weeklyBest) then
-			if (options.showDungeonNames) then
-				tooltip:SetCell(line, 2, keystoneStatus.weeklyBest.dungeon, nil, "RIGHT", nil, nil, 10)
-			end
-			tooltip:SetCell(line, 2 + dungeonNameOffset, "+" .. keystoneStatus.weeklyBest.level, nil, "RIGHT")
+	if (characterInfo.lastUpdate > lastReset) and (keystoneStatus.weeklyBest) then
+		if (options.showDungeonNames) then
+			tooltip:SetCell(line, 2, keystoneStatus.weeklyBest.dungeon, nil, "RIGHT", nil, nil, 10)
 		end
+		tooltip:SetCell(line, 2 + dungeonNameOffset, "+" .. keystoneStatus.weeklyBest.level, nil, "RIGHT")
 	end
 	tooltip:SetCellTextColor(line, 2 + dungeonNameOffset, green.r, green.g, green.b)
 
@@ -367,7 +365,7 @@ local function ShowCharacter(characterInfo)
 		tooltip:SetCellScript(line, 3 + (2 * dungeonNameOffset), "OnLeave", HideSubTooltip)
 	end
 
-	if (keystoneStatus.activeKeystone) then
+	if (characterInfo.lastUpdate > lastReset) and (keystoneStatus.activeKeystone) then
 		tooltip:SetCell(line, 3 + recentBestOffset + dungeonNameOffset, keystoneStatus.activeKeystone.dungeon, nil, "RIGHT", nil, nil, 10)
 		tooltip:SetCell(line, 4 + recentBestOffset + dungeonNameOffset, "+" .. keystoneStatus.activeKeystone.level, nil, "RIGHT")
 	end
@@ -376,6 +374,7 @@ end
 
 function MythicKeystoneStatus:ShowToolTip()
 	C_ChallengeMode.RequestMapInfo();
+	UpdateCharacter()
 
 	local tooltip = MythicKeystoneStatus.tooltip
 	local character = GetCharacterInfo()
@@ -395,10 +394,6 @@ function MythicKeystoneStatus:ShowToolTip()
 
 	columnCount = 4 + dungeonNameOffset + recentBestOffset
 
-	--if (showRecentBest) then
-	--	columnCount = columnCount + 2 + (2 * dungeonNameOffset)
-	--end
-	
 	if LibQTip:IsAcquired("MythicKeystoneStatusTooltip") and tooltip then
 		tooltip:Clear()
 	else
