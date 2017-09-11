@@ -101,10 +101,3 @@ end
 function MythicKeystoneStatus:SetOptions(options)
 	MythicKeystoneStatus.db.global.options = options
 end
-
-function MythicKeystoneStatus:GetOption(info)
-	MythicKeystoneStatus:Print(info)
-end
-
-function MythicKeystoneStatus:SetOption(info, value)
-end

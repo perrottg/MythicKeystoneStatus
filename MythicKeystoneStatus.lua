@@ -7,6 +7,7 @@ local LibQTip = LibStub('LibQTip-1.0')
 local frame = nil
 local keystoneStoneDungeons = nil
 local updateDelay = 3
+local bagUpdateDelay = 5
 
 local textures = {}
 textures.alliance = "|TInterface\\FriendsFrame\\PlusManz-Alliance:18|t"
@@ -16,11 +17,11 @@ local yellow = { r = 1.0, g = 1.0, b = 0.2 }
 local gray = { r = 0.5, g = 0.5, b = 0.5 }
 local green = { r = 0.2, g = 1.0, b = 0.2 }
 
-local MythicKeystoneStatusLauncher = LDB:NewDataObject("MythicKeystoneStatus", {
+local ldbObject = LDB:NewDataObject(L["Keystone"], {
 		type = "data source",
-		text = L["Mythic Keystone Status"],
-		label = "MythicKeystoneStatus",
-		tocname = "MythicKeystoneStatus",
+		--text = L["Mythic Keystone Status"],
+		label = L["Keystone"],
+		tocname = "MKS",
 		icon = "Interface\\TARGETINGFRAME\\UI-RaidTargetingIcon_1.png",
 		OnClick = function(clickedframe, button)
 			MythicKeystoneStatus:ShowOptions()
@@ -28,7 +29,7 @@ local MythicKeystoneStatusLauncher = LDB:NewDataObject("MythicKeystoneStatus", {
 		OnEnter = function(self)
 			frame = self
 			MythicKeystoneStatus:ShowToolTip()
-		end,
+		end
 })
 
 local function GetKeystoneDungeonList()
@@ -63,23 +64,75 @@ local function GetCharacterInfo()
 	return characterInfo
 end
 
+local function GetCharacter()
+	local characters = MythicKeystoneStatus.db.global.characters or {}
+	local name = UnitName("player")
+	local realm = GetRealmName()
+	local info = characters[name .. "=" .. realm] or GetCharacterInfo()
+
+	return info
+end
+
+local function PutCharacter(character)
+	local characters = MythicKeystoneStatus.db.global.characters or {}
+	characters[character.name .. "-" .. character.realm] = character
+end
 
 local function UpdateCharacter()
-	--MythicKeystoneStatus:Print("Updating character...")
-
 	if (UnitLevel("player") < 110) then return end
 
-	local characters = MythicKeystoneStatus.db.global.characters or {}
+	--local characters = MythicKeystoneStatus.db.global.characters or {}
 	local currentCharacter = GetCharacterInfo()
 
-	characters[currentCharacter.name .. "-" .. currentCharacter.realm] = currentCharacter
-	MythicKeystoneStatus.db.global.characters = characters
+	PutCharacter(currentCharacter)
+
+
+	--characters[currentCharacter.name .. "-" .. currentCharacter.realm] = currentCharacter
+	--MythicKeystoneStatus.db.global.characters = characters
+
+	if (currentCharacter.keystoneStatus.weeklyBest) then
+		ldbObject.text = "+" .. currentCharacter.keystoneStatus.weeklyBest.level
+	else
+		ldbObject.text = ""
+	end
+end
+
+local function GetActiveKeystone()
+	local keystoneInfo = nil
+	
+	for bag = 0, NUM_BAG_SLOTS do
+		local slots = GetContainerNumSlots(bag);
+		for slot = 1, slots do
+			if (GetContainerItemID(bag, slot) == 138019) then
+				local keystoneLink = GetContainerItemLink(bag, slot);
+				local parts = { strsplit(':', keystoneLink) }
+				local keystoneLevel	= tonumber(parts[3]);
+				local keystoneDungeon = C_ChallengeMode.GetMapInfo(tonumber(parts[2]));
+				
+				keystoneInfo = { dungeon = keystoneDungeon, level = keystoneLevel, link = keystoneLink }
+			end
+		end
+	end
+
+	return keystoneInfo;
 end
 
 
+
+local function UpdateBag()
+	MythicKeystoneStatus.bagTimer = false
+	local character = GetCharacter()
+
+	if (character) then
+		--MythicKeystoneStatus:Print("Looking for keystones in your bags...")
+		character.keystoneStatus.actyiveKeystone = GetActiveKeystone()
+		PutCharacter(character)
+	end
+end
+
 function MythicKeystoneStatus:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("MythicKeystoneStatusDB", defaults, true)
-	LDBIcon:Register("MythicKeystoneStatus", MythicKeystoneStatusLauncher, self.db.global.MinimapButton)	
+	LDBIcon:Register("MythicKeystoneStatus", ldbObject, self.db.global.MinimapButton)	
 	MythicKeystoneStatus:InitializeOptions()
 end
 
@@ -87,28 +140,26 @@ function MythicKeystoneStatus:OnEnable()
 	C_ChallengeMode.RequestMapInfo();
 	local dungeons = GetKeystoneDungeonList()
 
-	-- BAG_NEW_ITEMS_UPDATED
-
-	--CHALLENGE_MODE_NEW_RECORD
-
-	--self:RegisterEvent("BAG_UPDATE")
+	self:RegisterEvent("BAG_UPDATE")
 	self:RegisterEvent("CHALLENGE_MODE_COMPLETED")
 	MythicKeystoneStatus:ScheduleTimer(UpdateCharacter, updateDelay)
 end
 
 function MythicKeystoneStatus:OnDisable()
-	--self:UnregisterEvent("BAG_UPDATE")
+	self:UnregisterEvent("BAG_UPDATE")
 	self:UnregisterEvent("CHALLENGE_MODE_COMPLETED")
 end
 
 function MythicKeystoneStatus:CHALLENGE_MODE_COMPLETED(event)
-	--MythicKeystoneStatus:Print("CHALLENGE_MODE_COMPLETED event received!")
 	MythicKeystoneStatus:ScheduleTimer(UpdateCharacter, updateDelay)
 end
 
 function MythicKeystoneStatus:BAG_UPDATE(event, bag)
-	MythicKeystoneStatus:Print("BAG_UPDATE event received!")
-	MythicKeystoneStatus:ScheduleTimer(UpdateBag, updateDelay)
+	if (MythicKeystoneStatus.bagTimer) then return end
+
+	--MythicKeystoneStatus:Print("BAG_UPDATE event received!: Setting up timer...")
+	MythicKeystoneStatus.bagTimer = true
+	MythicKeystoneStatus:ScheduleTimer(UpdateBag, bagUpdateDelay)
 end
 
 local function GetWeeklyQuestResetTime()
@@ -137,31 +188,6 @@ local function GetCharacters(realm)
 	table.sort(sortedCharacters, function(a, b) return a.name < b.name end)
 
 	return sortedCharacters
-end
-
-local function GetActiveKeystone()
-	local keystoneInfo = nil
-	
-	for bag = 0, NUM_BAG_SLOTS do
-		local slots = GetContainerNumSlots(bag);
-		for slot = 1, slots do
-			if (GetContainerItemID(bag, slot) == 138019) then
-				local keystoneLink = GetContainerItemLink(bag, slot);
-				local parts = { strsplit(':', keystoneLink) }
-				local keystoneLevel	= tonumber(parts[3]);
-				local keystoneDungeon = C_ChallengeMode.GetMapInfo(tonumber(parts[2]));
-				
-				keystoneInfo = { dungeon = keystoneDungeon, level = keystoneLevel, link = keystoneLink }
-			end
-		end
-	end
-
-	return keystoneInfo;
-end
-
-
-local function UpdateBag()
-	MythicKeystoneStatus:Print("Updating bag...")
 end
 
 
@@ -196,6 +222,8 @@ function GetKeystoneStatus()
 	return keystoneStatus
 end
 
+
+
 function MythicKeystoneStatus:ShowSubTooltip(cell, info)	
 	if not info then
 		return
@@ -216,9 +244,28 @@ function MythicKeystoneStatus:ShowSubTooltip(cell, info)
 	end	
 
 	subTooltip:ClearAllPoints()
-	subTooltip:SetClampedToScreen(true)
-	subTooltip:SetPoint("TOP", MythicKeystoneStatus.tooltip, "TOP", 30, 0)
-	subTooltip:SetPoint("RIGHT", MythicKeystoneStatus.tooltip, "LEFT", -20, 0)
+
+	local tooltip = MythicKeystoneStatus.tooltip
+	local x, y = tooltip:GetParent():GetCenter()
+
+	if (tooltip:GetLeft() < x) then
+		subTooltip:SetPoint("LEFT", MythicKeystoneStatus.tooltip, "RIGHT", 20, 0)
+	else
+		subTooltip:SetPoint("RIGHT", MythicKeystoneStatus.tooltip, "LEFT", -20, 0)
+	end
+
+	if (tooltip:GetBottom() < y) then
+		subTooltip:SetPoint("BOTTOM", MythicKeystoneStatus.tooltip, "BOTTOM", 30, 0)
+	else
+		subTooltip:SetPoint("TOP", MythicKeystoneStatus.tooltip, "TOP", 30, 0)
+	end
+
+
+	--subTooltip:SetClampedToScreen(true)
+	--subTooltip:SetPoint("TOP", MythicKeystoneStatus.tooltip, "TOP", 30, 0)
+	--subTooltip:SetPoint("RIGHT", MythicKeystoneStatus.tooltip, "LEFT", -20, 0)
+	--subTooltip:SetPoint("BOTTOM", MythicKeystoneStatus.tooltip, "BOTTOM", 30, 0)
+	--subTooltip:SetPoint("LEFT", MythicKeystoneStatus.tooltip, "RIGHT", 20, 0)
 
 	if (type == "WEEKLY") then
 		title = L["Weekly Best"]
@@ -374,7 +421,6 @@ end
 
 function MythicKeystoneStatus:ShowToolTip()
 	C_ChallengeMode.RequestMapInfo();
-	UpdateCharacter()
 
 	local tooltip = MythicKeystoneStatus.tooltip
 	local character = GetCharacterInfo()

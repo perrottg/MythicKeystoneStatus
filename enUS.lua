@@ -4,6 +4,7 @@ if not L then
 	return
 end
 
+L["Keystone"] = true
 L["Mythic Keystone Status"] = true
 L["Mythic Keystone Status Options"] = true
 L["Weekly Best"] = true
