@@ -50,6 +50,8 @@ local function GetKeystoneDungeonList()
 end
 
 local function GetCharacterInfo()
+	if (UnitLevel("player") < 110) then return end
+
 	local characterInfo = {}
 	local _, class = UnitClass("player")
 
@@ -68,7 +70,7 @@ local function GetCharacter()
 	local characters = MythicKeystoneStatus.db.global.characters or {}
 	local name = UnitName("player")
 	local realm = GetRealmName()
-	local info = characters[name .. "=" .. realm] or GetCharacterInfo()
+	local info = characters[name .. "-" .. realm] or GetCharacterInfo()
 
 	return info
 end
@@ -180,7 +182,7 @@ local function GetCharacters(realm)
 	local characters = MythicKeystoneStatus.db.global.characters or {}
 
 	for key,value in pairs(characters) do
-		if (not realm) or (realm == characters[i].realm) then
+		if ((not realm) or (realm == characters[i].realm) and value.level >= 110) then
 			tinsert(sortedCharacters, value)
 		end
 	end
@@ -423,7 +425,7 @@ function MythicKeystoneStatus:ShowToolTip()
 	C_ChallengeMode.RequestMapInfo();
 
 	local tooltip = MythicKeystoneStatus.tooltip
-	local character = GetCharacterInfo()
+	--local character = GetCharacterInfo()
 	local dungeons = GetKeystoneDungeonList()
 	local characters = GetCharacters()
 	local columnCount = 5
