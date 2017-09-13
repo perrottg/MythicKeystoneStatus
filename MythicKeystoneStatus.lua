@@ -127,7 +127,7 @@ local function UpdateBag()
 
 	if (character) then
 		--MythicKeystoneStatus:Print("Looking for keystones in your bags...")
-		character.keystoneStatus.actyiveKeystone = GetActiveKeystone()
+		character.keystoneStatus.activeKeystone = GetActiveKeystone()
 		PutCharacter(character)
 	end
 end
