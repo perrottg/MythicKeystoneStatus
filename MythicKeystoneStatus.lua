@@ -353,7 +353,7 @@ local function GetRecentBestOffset()
 end
 
 local function ShowCharacter(characterInfo)
-	local lastReset = WorldBossStatus:GetWeeklyQuestResetTime() - 604800
+	local lastReset = GetWeeklyQuestResetTime() - 604800
 	local tooltip = MythicKeystoneStatus.tooltip
 	local line = tooltip:AddLine()
 	local factionIcon = ""
