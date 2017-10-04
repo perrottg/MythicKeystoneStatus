@@ -78,19 +78,16 @@ end
 local function PutCharacter(character)
 	local characters = MythicKeystoneStatus.db.global.characters or {}
 	characters[character.name .. "-" .. character.realm] = character
+	
+	MythicKeystoneStatus.db.global.characters = characters
 end
 
 local function UpdateCharacter()
 	if (UnitLevel("player") < 110) then return end
 
-	--local characters = MythicKeystoneStatus.db.global.characters or {}
 	local currentCharacter = GetCharacterInfo()
-
+	
 	PutCharacter(currentCharacter)
-
-
-	--characters[currentCharacter.name .. "-" .. currentCharacter.realm] = currentCharacter
-	--MythicKeystoneStatus.db.global.characters = characters
 
 	if (currentCharacter.keystoneStatus.weeklyBest) then
 		ldbObject.text = "+" .. currentCharacter.keystoneStatus.weeklyBest.level
@@ -126,7 +123,6 @@ local function UpdateBag()
 	local character = GetCharacter()
 
 	if (character) then
-		--MythicKeystoneStatus:Print("Looking for keystones in your bags...")
 		character.keystoneStatus.activeKeystone = GetActiveKeystone()
 		PutCharacter(character)
 	end
@@ -159,7 +155,6 @@ end
 function MythicKeystoneStatus:BAG_UPDATE(event, bag)
 	if (MythicKeystoneStatus.bagTimer) then return end
 
-	--MythicKeystoneStatus:Print("BAG_UPDATE event received!: Setting up timer...")
 	MythicKeystoneStatus.bagTimer = true
 	MythicKeystoneStatus:ScheduleTimer(UpdateBag, bagUpdateDelay)
 end
