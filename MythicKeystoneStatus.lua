@@ -39,9 +39,12 @@ local function GetKeystoneDungeonList()
 
 	for i = 1, #maps do
 		local mapInfo = maps[i]
-		local mapName, _, _, mapTexture = C_ChallengeMode.GetMapInfo(mapInfo);
+		local mapChallengeModeID = maps[i]
+		--local mapName, _, _, mapTexture = C_ChallengeMode.GetMapInfo(mapInfo);
+		local mapName, _, _, mapTexture = C_ChallengeMode.GetMapUIInfo(mapChallengeModeID)
 
-		tinsert(dungeons, { id = mapInfo, name = mapName, texture = mapTexture });
+		--tinsert(dungeons, { id = mapInfo, name = mapName, texture = mapTexture });
+		tinsert(dungeons, { id = mapChallengeModeID, name  = mapName, texture = mapTexture})
     end
 
 	table.sort(dungeons, function(a, b) return a.name < b.name end);
@@ -135,7 +138,8 @@ function MythicKeystoneStatus:OnInitialize()
 end
 
 function MythicKeystoneStatus:OnEnable()
-	C_ChallengeMode.RequestMapInfo();
+	--C_ChallengeMode.RequestMapInfo();
+	C_MythicPlus.RequestMapInfo();
 	local dungeons = GetKeystoneDungeonList()
 
 	self:RegisterEvent("BAG_UPDATE")
@@ -194,8 +198,14 @@ function GetKeystoneStatus()
 
 	for i = 1, #dungeons do
 		local status = {}
-		_, status.weeklyBestTime, status.weeklyBestLevel, affixes = C_ChallengeMode.GetMapPlayerStats(dungeons[i].id);
-		status.recentBestTime, status.recentBestLevel = C_ChallengeMode.GetRecentBestForMap(dungeons[i].id);
+		local mapID = dungeons[i].id
+
+		--_, status.weeklyBestTime, status.weeklyBestLevel, affixes = C_ChallengeMode.GetMapPlayerStats(dungeons[i].id);
+		status.weeklyBestTime, status.weeklyBestLevel = C_MythicPlus.GetWeeklyBestForMap(mapID);
+
+		--status.recentBestTime, status.recentBestLevel = C_ChallengeMode.GetRecentBestForMap(dungeons[i].id);
+		--local intimeInfo, overtimeInfo = C_MythicPlus.GetSeasonBestForMap(mapId);
+		status.recentBestTime, status.recentBestLevel = C_MythicPlus.GetSeasonBestForMap(mapID);
 
 		if (status.weeklyBestLevel) then
 			if (not keystoneStatus.weeklyBest) or (keystoneStatus.weeklyBest.level < status.weeklyBestLevel) or 
@@ -417,7 +427,8 @@ local function ShowCharacter(characterInfo)
 end
 
 function MythicKeystoneStatus:ShowToolTip()
-	C_ChallengeMode.RequestMapInfo();
+	--C_ChallengeMode.RequestMapInfo();
+	C_MythicPlus.RequestMapInfo();
 
 	local tooltip = MythicKeystoneStatus.tooltip
 	--local character = GetCharacterInfo()
