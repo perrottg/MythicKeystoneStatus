@@ -7,7 +7,6 @@ local LibQTip = LibStub('LibQTip-1.0')
 local frame = nil
 local keystoneStoneDungeons = nil
 local updateDelay = 3
-local bagUpdateDelay = 5
 
 local textures = {}
 textures.alliance = "|TInterface\\FriendsFrame\\PlusManz-Alliance:18|t"
@@ -40,10 +39,8 @@ local function GetKeystoneDungeonList()
 	for i = 1, #maps do
 		local mapInfo = maps[i]
 		local mapChallengeModeID = maps[i]
-		--local mapName, _, _, mapTexture = C_ChallengeMode.GetMapInfo(mapInfo);
 		local mapName, _, _, mapTexture = C_ChallengeMode.GetMapUIInfo(mapChallengeModeID)
 
-		--tinsert(dungeons, { id = mapInfo, name = mapName, texture = mapTexture });
 		tinsert(dungeons, { id = mapChallengeModeID, name  = mapName, texture = mapTexture})
     end
 
@@ -86,13 +83,15 @@ local function PutCharacter(character)
 end
 
 local function UpdateCharacter()
-	if (UnitLevel("player") < 110) then return end
+	if (UnitLevel("player") < 120) then return end
 
 	local currentCharacter = GetCharacterInfo()
 	
-	PutCharacter(currentCharacter)
+	if currentCharacter.keystoneStatus then
+		PutCharacter(currentCharacter)
+	end
 
-	if (currentCharacter.keystoneStatus.weeklyBest) then
+	if (currentCharacter.keystoneStatus and currentCharacter.keystoneStatus.weeklyBest) then
 		ldbObject.text = "+" .. currentCharacter.keystoneStatus.weeklyBest.level
 	else
 		ldbObject.text = ""
@@ -115,8 +114,7 @@ end
 
 
 
-local function UpdateBag()
-	MythicKeystoneStatus.bagTimer = false
+local function Update()
 	local character = GetCharacter()
 
 	if (character) then
@@ -132,29 +130,19 @@ function MythicKeystoneStatus:OnInitialize()
 end
 
 function MythicKeystoneStatus:OnEnable()
-	--C_ChallengeMode.RequestMapInfo();
 	C_MythicPlus.RequestMapInfo();
 	local dungeons = GetKeystoneDungeonList()
 
-	self:RegisterEvent("BAG_UPDATE")
 	self:RegisterEvent("CHALLENGE_MODE_COMPLETED")
 	MythicKeystoneStatus:ScheduleTimer(UpdateCharacter, updateDelay)
 end
 
 function MythicKeystoneStatus:OnDisable()
-	self:UnregisterEvent("BAG_UPDATE")
 	self:UnregisterEvent("CHALLENGE_MODE_COMPLETED")
 end
 
 function MythicKeystoneStatus:CHALLENGE_MODE_COMPLETED(event)
 	MythicKeystoneStatus:ScheduleTimer(UpdateCharacter, updateDelay)
-end
-
-function MythicKeystoneStatus:BAG_UPDATE(event, bag)
-	if (MythicKeystoneStatus.bagTimer) then return end
-
-	MythicKeystoneStatus.bagTimer = true
-	MythicKeystoneStatus:ScheduleTimer(UpdateBag, bagUpdateDelay)
 end
 
 local function GetWeeklyQuestResetTime()
@@ -187,8 +175,11 @@ end
 
 
 function GetKeystoneStatus()
-	local keystoneStatus = {}
+	local keystoneStatus 
 	local dungeons = GetKeystoneDungeonList()
+	local weeklyBest
+	local seasonBest
+	local activeKeystone
 
 	for i = 1, #dungeons do
 		local status = {}
@@ -204,23 +195,45 @@ function GetKeystoneStatus()
 		end
 
 		if (status.weeklyBestLevel) then
-			if (not keystoneStatus.weeklyBest) or (keystoneStatus.weeklyBest.level < status.weeklyBestLevel) or 
-				( (keystoneStatus.weeklyBest.level == status.weeklyBestlevel) and (keystoneStatus.weeklyBest.time > status.weeklyBestTime) ) then
-				keystoneStatus.weeklyBest = {level = status.weeklyBestLevel, time = status.weeklyBestTime, dungeon = dungeons[i].name}
+			if (not weeklyBest) or (weeklyBest.level < status.weeklyBestLevel) or 
+				( (weeklyBest.level == status.weeklyBestlevel) and (weeklyBest.time > status.weeklyBestTime) ) then
+				weeklyBest = {level = status.weeklyBestLevel, time = status.weeklyBestTime, dungeon = dungeons[i].name}
 			end
+			--if (not keystoneStatus.weeklyBest) or (keystoneStatus.weeklyBest.level < status.weeklyBestLevel) or 
+			--	( (keystoneStatus.weeklyBest.level == status.weeklyBestlevel) and (keystoneStatus.weeklyBest.time > status.weeklyBestTime) ) then
+			--	keystoneStatus.weeklyBest = {level = status.weeklyBestLevel, time = status.weeklyBestTime, dungeon = dungeons[i].name}
+			--end
 		end
 
 		if (status.seasonBestLevel) then
-			if (not keystoneStatus.seasonBest) or (keystoneStatus.seasonBest.level < status.seasonBestLevel) or 
-				( (keystoneStatus.seasonBest.level == status.seasonBestLevel) and (keystoneStatus.seasonBest.time > status.seasonBestTime) ) then
-				keystoneStatus.seasonBest = {level = status.seasonBestLevel, time = status.seasonBestTime, dungeon = dungeons[i].name}
+			if (not seasonBest) or (seasonBest.level < status.seasonBestLevel) or 
+				( (seasonBest.level == status.seasonBestLevel) and (seasonBest.time > status.seasonBestTime) ) then
+				seasonBest = {level = status.seasonBestLevel, time = status.seasonBestTime, dungeon = dungeons[i].name}
 			end
+			--if (not keystoneStatus.seasonBest) or (keystoneStatus.seasonBest.level < status.seasonBestLevel) or 
+			--	( (keystoneStatus.seasonBest.level == status.seasonBestLevel) and (keystoneStatus.seasonBest.time > status.seasonBestTime) ) then
+			--	keystoneStatus.seasonBest = {level = status.seasonBestLevel, time = status.seasonBestTime, dungeon = dungeons[i].name}
+			--end
 		end
 		
-		keystoneStatus[dungeons[i].name] = status	
+		if status.weeklyBestLevel or status.seasonBestLevel then
+			keystoneStatus = keystoneStatus or {}			
+			keystoneStatus[dungeons[i].name] = status	
+		end
 	end
 
-	keystoneStatus.activeKeystone = GetActiveKeystone()
+	activeKeystone = GetActiveKeystone()
+
+	if activeKeystone or weeklyBest or seasonBest then
+		keystoneStatus = keystoneStatus or {}	
+
+		keystoneStatus.weeklyBest = weeklyBest
+		keystoneStatus.seasonBest = seasonBest
+		keystoneStatus.activeKeystone = activeKeystone
+
+	end
+
+	--keystoneStatus.activeKeystone = GetActiveKeystone()
 
 	return keystoneStatus
 end
@@ -295,7 +308,7 @@ function MythicKeystoneStatus:ShowSubTooltip(cell, info)
 			local level = keystoneStatus.weeklyBestLevel
 
 			if (keystoneStatus.weeklyBestTime) then
-				subTooltip:SetCell(line, 2, GetTimeStringFromSeconds(keystoneStatus.weeklyBestTime / 1000), nil, "LEFT")
+				subTooltip:SetCell(line, 2, GetTimeStringFromSeconds(keystoneStatus.weeklyBestTime), nil, "LEFT")
 			else
 				subTooltip:SetLineTextColor(line, gray.r, gray.g, gray.b)
 			end
@@ -307,7 +320,7 @@ function MythicKeystoneStatus:ShowSubTooltip(cell, info)
 			local level = keystoneStatus.seasonBestLevel
 
 			if (keystoneStatus.seasonBestTime) then
-				subTooltip:SetCell(line, 2, GetTimeStringFromSeconds(keystoneStatus.seasonBestTime / 1000), nil, "LEFT")
+				subTooltip:SetCell(line, 2, GetTimeStringFromSeconds(keystoneStatus.seasonBestTime), nil, "LEFT")
 			else
 				subTooltip:SetLineTextColor(line, gray.r, gray.g, gray.b)
 			end
@@ -423,11 +436,9 @@ local function ShowCharacter(characterInfo)
 end
 
 function MythicKeystoneStatus:ShowToolTip()
-	--C_ChallengeMode.RequestMapInfo();
 	C_MythicPlus.RequestMapInfo();
 
 	local tooltip = MythicKeystoneStatus.tooltip
-	--local character = GetCharacterInfo()
 	local dungeons = GetKeystoneDungeonList()
 	local characters = GetCharacters()
 	local columnCount = 5
@@ -474,7 +485,12 @@ function MythicKeystoneStatus:ShowToolTip()
 	tooltip:AddSeparator(3,0,0,0,0)
 
 	for i=1, #characters do		
-		ShowCharacter(characters[i])		
+		local character = characters[i]
+		if character.keystoneStatus then
+			if character.keystoneStatus.weeklyBest or character.keystoneStatus.seasonBest or character.keystoneStatus.activeKeystone then
+				ShowCharacter(character)		
+			end
+		end
 	end
 
 	if (options.showTips) then
