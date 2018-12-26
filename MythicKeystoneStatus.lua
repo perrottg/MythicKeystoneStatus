@@ -101,19 +101,13 @@ end
 
 local function GetActiveKeystone()
 	local keystoneInfo = nil
-	
-	for bag = 0, NUM_BAG_SLOTS do
-		local slots = GetContainerNumSlots(bag);
-		for slot = 1, slots do
-			if (GetContainerItemID(bag, slot) == 138019) then
-				local keystoneLink = GetContainerItemLink(bag, slot);
-				local parts = { strsplit(':', keystoneLink) }
-				local keystoneLevel	= tonumber(parts[3]);
-				local keystoneDungeon = C_ChallengeMode.GetMapInfo(tonumber(parts[2]));
-				
-				keystoneInfo = { dungeon = keystoneDungeon, level = keystoneLevel, link = keystoneLink }
-			end
-		end
+	local mapID = C_MythicPlus.GetOwnedKeystoneChallengeMapID()
+
+	if mapID then 
+		local keystoneLevel	= C_MythicPlus.GetOwnedKeystoneLevel()
+		local keystoneDungeon = C_ChallengeMode.GetMapUIInfo(mapID);
+
+		keystoneInfo = { dungeon = keystoneDungeon, level = keystoneLevel, link = keystoneLink }
 	end
 
 	return keystoneInfo;
@@ -200,12 +194,14 @@ function GetKeystoneStatus()
 		local status = {}
 		local mapID = dungeons[i].id
 
-		--_, status.weeklyBestTime, status.weeklyBestLevel, affixes = C_ChallengeMode.GetMapPlayerStats(dungeons[i].id);
 		status.weeklyBestTime, status.weeklyBestLevel = C_MythicPlus.GetWeeklyBestForMap(mapID);
 
-		--status.recentBestTime, status.recentBestLevel = C_ChallengeMode.GetRecentBestForMap(dungeons[i].id);
-		--local intimeInfo, overtimeInfo = C_MythicPlus.GetSeasonBestForMap(mapId);
-		status.recentBestTime, status.recentBestLevel = C_MythicPlus.GetSeasonBestForMap(mapID);
+		local intimeInfo, overtimeInfo = C_MythicPlus.GetSeasonBestForMap(mapID);
+
+		if intimeInfo then
+		  status.seasonBestTime = intimeInfo.durationSec
+		  status.seasonBestLevel = intimeInfo.level
+		end
 
 		if (status.weeklyBestLevel) then
 			if (not keystoneStatus.weeklyBest) or (keystoneStatus.weeklyBest.level < status.weeklyBestLevel) or 
@@ -214,10 +210,10 @@ function GetKeystoneStatus()
 			end
 		end
 
-		if (status.recentBestLevel) then
-			if (not keystoneStatus.recentBest) or (keystoneStatus.recentBest.level < status.recentBestLevel) or 
-				( (keystoneStatus.recentBest.level == status.recentBestLevel) and (keystoneStatus.recentBest.time > status.recentBestTime) ) then
-				keystoneStatus.recentBest = {level = status.recentBestLevel, time = status.recentBestTime, dungeon = dungeons[i].name}
+		if (status.seasonBestLevel) then
+			if (not keystoneStatus.seasonBest) or (keystoneStatus.seasonBest.level < status.seasonBestLevel) or 
+				( (keystoneStatus.seasonBest.level == status.seasonBestLevel) and (keystoneStatus.seasonBest.time > status.seasonBestTime) ) then
+				keystoneStatus.seasonBest = {level = status.seasonBestLevel, time = status.seasonBestTime, dungeon = dungeons[i].name}
 			end
 		end
 		
@@ -277,7 +273,7 @@ function MythicKeystoneStatus:ShowSubTooltip(cell, info)
 	if (type == "WEEKLY") then
 		title = L["Weekly Best"]
 	else
-		title = L["Recent Best"]
+		title = L["Season Best"]
 	end
 
 	line = subTooltip:AddLine()	
@@ -308,10 +304,10 @@ function MythicKeystoneStatus:ShowSubTooltip(cell, info)
 			subTooltip:SetCell(line, 3, level, nil, "RIGHT")				
 		else 
 
-			local level = keystoneStatus.recentBestLevel
+			local level = keystoneStatus.seasonBestLevel
 
-			if (keystoneStatus.recentBestTime) then
-				subTooltip:SetCell(line, 2, GetTimeStringFromSeconds(keystoneStatus.recentBestTime / 1000), nil, "LEFT")
+			if (keystoneStatus.seasonBestTime) then
+				subTooltip:SetCell(line, 2, GetTimeStringFromSeconds(keystoneStatus.seasonBestTime / 1000), nil, "LEFT")
 			else
 				subTooltip:SetLineTextColor(line, gray.r, gray.g, gray.b)
 			end
@@ -346,11 +342,11 @@ local function GetDungeonNameOffset()
 	return offset
 end
 
-local function GetRecentBestOffset()
+local function GetSeasonBestOffset()
 	local offset = 0
 	local options = MythicKeystoneStatus:GetOptions()
 
-	if (options.showRecentBest) then
+	if (options.showSeasonBest) then
 		offset = 1 + GetDungeonNameOffset()
 	end
 
@@ -366,7 +362,7 @@ local function ShowCharacter(characterInfo)
 	local keystoneStatus = characterInfo.keystoneStatus
 	local characterName = characterInfo.name
 	local dungeonNameOffset = GetDungeonNameOffset()
-	local recentBestOffset = GetRecentBestOffset()
+	local seasonBestOffset = GetSeasonBestOffset()
 	local options = MythicKeystoneStatus:GetOptions()
 
 
@@ -402,17 +398,17 @@ local function ShowCharacter(characterInfo)
 
 	tooltip:SetCellScript(line, 2 + dungeonNameOffset, "OnLeave", HideSubTooltip)
 
-	if (options.showRecentBest) then
-		if (keystoneStatus.recentBest) then
+	if (options.showSeasonBest) then
+		if (keystoneStatus.seasonBest) then
 			if (options.showDungeonNames) then 
-				tooltip:SetCell(line, 4, keystoneStatus.recentBest.dungeon, nil, "RIGHT", nil, nil, 10)
+				tooltip:SetCell(line, 4, keystoneStatus.seasonBest.dungeon, nil, "RIGHT", nil, nil, 10)
 			end
-			tooltip:SetCell(line, 3 + (2 * dungeonNameOffset), "+" .. keystoneStatus.recentBest.level, nil, "RIGHT")
+			tooltip:SetCell(line, 3 + (2 * dungeonNameOffset), "+" .. keystoneStatus.seasonBest.level, nil, "RIGHT")
 		end		
 		tooltip:SetCellTextColor(line, 3 + (2 * dungeonNameOffset), green.r, green.g, green.b)
 
 		tooltip:SetCellScript(line, 3 + (2 * dungeonNameOffset), "OnEnter", function(self)
-				local info = { character = characterInfo, type= "RECENT" }
+				local info = { character = characterInfo, type= "SEASON" }
 				MythicKeystoneStatus:ShowSubTooltip(self, info)
 			end)
 
@@ -420,10 +416,10 @@ local function ShowCharacter(characterInfo)
 	end
 
 	if (characterInfo.lastUpdate > lastReset) and (keystoneStatus.activeKeystone) then
-		tooltip:SetCell(line, 3 + recentBestOffset + dungeonNameOffset, keystoneStatus.activeKeystone.dungeon, nil, "RIGHT", nil, nil, 10)
-		tooltip:SetCell(line, 4 + recentBestOffset + dungeonNameOffset, "+" .. keystoneStatus.activeKeystone.level, nil, "RIGHT")
+		tooltip:SetCell(line, 3 + seasonBestOffset + dungeonNameOffset, keystoneStatus.activeKeystone.dungeon, nil, "RIGHT", nil, nil, 10)
+		tooltip:SetCell(line, 4 + seasonBestOffset + dungeonNameOffset, "+" .. keystoneStatus.activeKeystone.level, nil, "RIGHT")
 	end
-	tooltip:SetCellTextColor(line, 4 + recentBestOffset + dungeonNameOffset, green.r, green.g, green.b)
+	tooltip:SetCellTextColor(line, 4 + seasonBestOffset + dungeonNameOffset, green.r, green.g, green.b)
 end
 
 function MythicKeystoneStatus:ShowToolTip()
@@ -436,17 +432,17 @@ function MythicKeystoneStatus:ShowToolTip()
 	local characters = GetCharacters()
 	local columnCount = 5
 	local dungeonNameOffset = GetDungeonNameOffset()
-	local recentBestOffset = GetRecentBestOffset()
+	local seasonBestOffset = GetSeasonBestOffset()
 	local weeklyBestTitle = L["Weekly"]
-	local recentBestTitle = L["Recent"]
+	local seasonBestTitle = L["Season"]
 	local options = MythicKeystoneStatus:GetOptions()
 
 	if (options.showDungeonNames) then
 		weeklyBestTitle = L["Weekly Best"]
-		recentBestTitle = L["Recent Best"]
+		seasonBestTitle = L["Season Best"]
 	end
 
-	columnCount = 4 + dungeonNameOffset + recentBestOffset
+	columnCount = 4 + dungeonNameOffset + seasonBestOffset
 
 	if LibQTip:IsAcquired("MythicKeystoneStatusTooltip") and tooltip then
 		tooltip:Clear()
@@ -466,14 +462,14 @@ function MythicKeystoneStatus:ShowToolTip()
 	tooltip:SetCell(line, 2, weeklyBestTitle, nil, "RIGHT", 1 + dungeonNameOffset)
 	tooltip:SetCellTextColor(line, 2, yellow.r, yellow.g, yellow.b)
 
-	if (options.showRecentBest) then
-		tooltip:SetCell(line, 3 + dungeonNameOffset, recentBestTitle, nil, "RIGHT", 1 + dungeonNameOffset)
+	if (options.showSeasonBest) then
+		tooltip:SetCell(line, 3 + dungeonNameOffset, seasonBestTitle, nil, "RIGHT", 1 + dungeonNameOffset)
 		tooltip:SetCellTextColor(line, 3 + dungeonNameOffset, yellow.r, yellow.g, yellow.b)
 		column = 6
 	end
 
-	tooltip:SetCell(line, 3 + recentBestOffset + dungeonNameOffset, L["Active Keystone"], nil, "RIGHT", 2)
-	tooltip:SetCellTextColor(line, 3 + recentBestOffset + dungeonNameOffset, yellow.r, yellow.g, yellow.b)
+	tooltip:SetCell(line, 3 + seasonBestOffset + dungeonNameOffset, L["Active Keystone"], nil, "RIGHT", 2)
+	tooltip:SetCellTextColor(line, 3 + seasonBestOffset + dungeonNameOffset, yellow.r, yellow.g, yellow.b)
 
 	tooltip:AddSeparator(3,0,0,0,0)
 

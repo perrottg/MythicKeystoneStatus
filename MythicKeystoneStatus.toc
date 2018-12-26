@@ -2,7 +2,7 @@
 ## Interface: 80100
 ## Notes: Mythic Keystone Status keeps track of the mythic plus dungeons that you have successfully completed on all your characters.
 ## Title: Mythic Keystone Status
-## Version: 1.5.0
+## Version: 1.5.1
 ## SavedVariables: MythicKeystoneStatusDB
 
 embeds.xml

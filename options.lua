@@ -24,23 +24,23 @@ local optionsTable = {
 						return options.expandCharacterNames
 					end
 				},
-				showRecentBest = {
-					name = L["Show Recent Best"],
-					desc = L["Shows the recent best statistic in the main tooltp"],
+				showSeasonBest = {
+					name = L["Show Season Best"],
+					desc = L["Shows the season best statistic in the main tooltp"],
 					type = "toggle",
 					set = function(info,val)
 						local options = MythicKeystoneStatus:GetOptions()
-						options.showRecentBest = val
+						options.showSeasonBest = val
 						MythicKeystoneStatus:SetOptions(options)
 					end,						
 					get = function(info)
 						local options = MythicKeystoneStatus:GetOptions()
-						return options.showRecentBest
+						return options.showSeasonBest
 					end
 				},
 				showDungeonNames = {
 					name = L["Show Dungeon Names"],
-					desc = L["Includes dungeon name when with weekly best and recent best statistics."],
+					desc = L["Includes dungeon name when with weekly best and season best statistics."],
 					type = "toggle",
 					set = function(info,val)
 						local options = MythicKeystoneStatus:GetOptions()
@@ -90,7 +90,7 @@ function MythicKeystoneStatus:GetOptions()
 	if (not options) then
 		options = {}
 		options.expandCharacterNames = false
-		options.showRecentBest = true
+		options.showSeasonBest = true
 		options.showDungeonNames = true
 		options.showTips = true
 	end
