@@ -16,6 +16,7 @@ L["Character"] = true
 L["Dungeon"] = true
 L["Time"] = true
 L["Level"] = true
+L["Record Set"] = true
 L["TIP: Hover over level number for more details"] = true
 L["General Options"] = true
 L["Display Options"] = true
