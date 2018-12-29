@@ -4,6 +4,12 @@ if not L then
 	return
 end
 
+L["Remove Tracked Characters"] = true
+L["Select the tracked character to remove."] = true
+L["Remove"] = true
+L["Click to remove the selected tracked character."] = true
+L["Show Minimap Button"] = true
+L["Toggles the display of the minimap button."] = true
 L["Keystone"] = true
 L["Mythic Keystone Status"] = true
 L["Mythic Keystone Status Options"] = true

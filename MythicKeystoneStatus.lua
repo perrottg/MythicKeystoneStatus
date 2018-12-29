@@ -17,7 +17,9 @@ local gray = { r = 0.5, g = 0.5, b = 0.5 }
 local green = { r = 0.2, g = 1.0, b = 0.2 }
 local red = { r = 1.0, g = 0.2, b = 0.2 }
 
-local ldbObject = LDB:NewDataObject(L["Keystone"], {
+local addonName = "MythicKeystoneStatus"
+
+local ldbObject = LDB:NewDataObject(addonName, {
 		type = "data source",
 		--text = L["Mythic Keystone Status"],
 		label = L["Keystone"],
@@ -133,9 +135,27 @@ local function Update()
 end
 
 function MythicKeystoneStatus:OnInitialize()
+	local defaults = MythicKeystoneStatus:GetDefaultOptions()
 	self.db = LibStub("AceDB-3.0"):New("MythicKeystoneStatusDB", defaults, true)
-	LDBIcon:Register("MythicKeystoneStatus", ldbObject, self.db.global.MinimapButton)	
+	LDBIcon:Register(addonName, ldbObject, self.db.global.options.MinimapButton)	
 	MythicKeystoneStatus:InitializeOptions()
+end
+
+function MythicKeystoneStatus:ToggleMinimapButton(info, value)
+	local options = MythicKeystoneStatus:GetOptions()
+
+	options.MinimapButton.hide = not value
+
+	if options.MinimapButton.hide then
+		LDBIcon:Hide(addonName)
+	else
+		LDBIcon:Show(addonName)
+	end
+
+	MythicKeystoneStatus:SetOptions(options)
+
+	--LDBIcon:Refresh(addonName)
+	--LDBIcon:Refresh(addonName)
 end
 
 function MythicKeystoneStatus:OnEnable()
