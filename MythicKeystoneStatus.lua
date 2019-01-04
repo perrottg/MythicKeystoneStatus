@@ -429,10 +429,12 @@ local function ShowCharacter(characterInfo)
 		tooltip:SetCell(line, 2 + dungeonNameOffset, "+" .. keystoneStatus.weeklyBest.level, nil, "RIGHT")
 	end
 
-	if keystoneStatus.weeklyBest.overtime then
-		tooltip:SetCellTextColor(line, 2 + dungeonNameOffset, red.r, red.g, red.b)
-	else
-		tooltip:SetCellTextColor(line, 2 + dungeonNameOffset, green.r, green.g, green.b)
+	if keystoneStatus.weeklyBest then
+		if keystoneStatus.weeklyBest.overtime then
+			tooltip:SetCellTextColor(line, 2 + dungeonNameOffset, red.r, red.g, red.b)
+		else
+			tooltip:SetCellTextColor(line, 2 + dungeonNameOffset, green.r, green.g, green.b)
+		end
 	end
 
 	tooltip:SetCellScript(line, 2 + dungeonNameOffset, "OnEnter", function(self)
