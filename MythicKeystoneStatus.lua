@@ -465,10 +465,12 @@ local function ShowCharacter(characterInfo)
 		tooltip:SetCell(line, 4 + seasonBestOffset + dungeonNameOffset, "+" .. keystoneStatus.activeKeystone.level, nil, "RIGHT")
 	end
 
-	if keystoneStatus.seasonBest.overtime then
-		tooltip:SetCellTextColor(line, 4 + seasonBestOffset + dungeonNameOffset, red.r, red.g, red.b)
-	else		
-		tooltip:SetCellTextColor(line, 4 + seasonBestOffset + dungeonNameOffset, green.r, green.g, green.b)
+	if keystoneStatus.seasonBest then
+		if keystoneStatus.seasonBest.overtime then
+			tooltip:SetCellTextColor(line, 4 + seasonBestOffset + dungeonNameOffset, red.r, red.g, red.b)
+		else		
+			tooltip:SetCellTextColor(line, 4 + seasonBestOffset + dungeonNameOffset, green.r, green.g, green.b)
+		end
 	end
 end
 
