@@ -236,8 +236,7 @@ function GetKeystoneStatus()
 		elseif overtimeInfo then
 			status.seasonBest.time = overtimeInfo.durationSec
 		  	status.seasonBest.level = overtimeInfo.level
-			status.seasonBest.recordSet = overtimeInfo.completionDate
-			status.seasonBest.members = overtime.members
+			status.seasonBest.recordSet = overtimeInfo.members
 			status.seasonBest.overtime = true
 		end
 
